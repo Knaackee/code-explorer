@@ -1,0 +1,32 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.swp
+
+## NuGet
+*.nupkg
+*.snupkg
+packages/
+!**/packages/repositories.config
+
+## Test results
+TestResults/
+coverage/
+*.trx
+*.coverage
+
+## Publish output
+publish/
+
+## Index cache (developer machines only — do not commit index data)
+.code-index/
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Benchmark artifacts
+BenchmarkDotNet.Artifacts/

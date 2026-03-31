@@ -1,0 +1,19 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+
+    <!-- NuGet metadata (shared across all packable projects) -->
+    <Authors>Your Name</Authors>
+    <Company>Your Company</Company>
+    <RepositoryUrl>https://github.com/you/CodeExplorer</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/you/CodeExplorer</PackageProjectUrl>
+  </PropertyGroup>
+</Project>

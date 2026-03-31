@@ -14,6 +14,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Include root README in the NuGet package so PackageReadmeFile resolves during CI pack -->
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" Link="README.md" />
+
     <!-- AST Parsing -->
     <PackageReference Include="TreeSitter.DotNet" Version="1.3.0" />
 

@@ -4,7 +4,7 @@ Token-efficient .NET library and CLI for codebase exploration via tree-sitter AS
 
 **Index once. Query cheaply. Let your LLM focus on reasoning, not searching.**
 
-> Originally inspired by the [DotNetCodeMunch](https://github.com/you/DotNetCodeMunch) project.
+> Originally inspired by the [DotNetCodeMunch](https://github.com/Knaackee/code-explorer) project.
 
 ---
 
@@ -40,19 +40,19 @@ No LLM required. This is a pure retrieval engine designed to be _consumed_ by an
 Windows (PowerShell):
 
 ```powershell
-Invoke-WebRequest -Uri https://github.com/<owner>/<repo>/releases/latest/download/cxp-win-x64.exe -OutFile cxp.exe; Move-Item cxp.exe "$env:LOCALAPPDATA\Microsoft\WindowsApps\cxp.exe" -Force
+Invoke-WebRequest -Uri https://github.com/Knaackee/code-explorer/releases/latest/download/cxp-win-x64.exe -OutFile cxp.exe; Move-Item cxp.exe "$env:LOCALAPPDATA\Microsoft\WindowsApps\cxp.exe" -Force
 ```
 
 Linux:
 
 ```bash
-curl -Lo cxp https://github.com/<owner>/<repo>/releases/latest/download/cxp-linux-x64 && chmod +x cxp && sudo mv cxp /usr/local/bin/
+curl -Lo cxp https://github.com/Knaackee/code-explorer/releases/latest/download/cxp-linux-x64 && chmod +x cxp && sudo mv cxp /usr/local/bin/
 ```
 
 macOS:
 
 ```bash
-curl -Lo cxp https://github.com/<owner>/<repo>/releases/latest/download/cxp-osx-arm64 && chmod +x cxp && sudo mv cxp /usr/local/bin/
+curl -Lo cxp https://github.com/Knaackee/code-explorer/releases/latest/download/cxp-osx-arm64 && chmod +x cxp && sudo mv cxp /usr/local/bin/
 ```
 
 #### First Commands

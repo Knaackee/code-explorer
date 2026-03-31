@@ -15,6 +15,7 @@ public sealed class CliEndToEndTests : IAsyncLifetime
 {
     private readonly ITestOutputHelper _output;
     private readonly string _tempRoot;
+    private readonly string _indexPath;
     private readonly string _solutionRoot;
     private readonly string _cliProject;
 
@@ -34,6 +35,8 @@ public sealed class CliEndToEndTests : IAsyncLifetime
         var guid = Guid.NewGuid().ToString("N");
         _tempRoot = Path.Combine(Path.GetTempPath(), $"cxp_cli_e2e_{guid}");
         Directory.CreateDirectory(_tempRoot);
+        _indexPath = Path.Combine(_tempRoot, ".index");
+        Directory.CreateDirectory(_indexPath);
 
         SeedTestCodebase();
     }
@@ -64,13 +67,13 @@ public sealed class CliEndToEndTests : IAsyncLifetime
     }
 
     private async Task<(int ExitCode, string Stdout, string Stderr)> RunCliAsync(
-        string arguments, int timeoutMs = 60_000)
+        string arguments, int timeoutMs = 60_000, string? workingDirectory = null)
     {
         var psi = new ProcessStartInfo
         {
             FileName = "dotnet",
             Arguments = $"run --project \"{_cliProject}\" -- {arguments}",
-            WorkingDirectory = _solutionRoot,
+            WorkingDirectory = workingDirectory ?? _solutionRoot,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -80,6 +83,7 @@ public sealed class CliEndToEndTests : IAsyncLifetime
         // Suppress Spectre.Console's ANSI detection so we get plain text
         psi.Environment["NO_COLOR"] = "1";
         psi.Environment["TERM"] = "dumb";
+        psi.Environment["CODE_INDEX_PATH"] = _indexPath;
 
         using var proc = Process.Start(psi)!;
         var stdoutTask = proc.StandardOutput.ReadToEndAsync();
@@ -300,6 +304,64 @@ public sealed class CliEndToEndTests : IAsyncLifetime
         stdout.Should().Contain("Factorial");
     }
 
+    [Fact]
+    public async Task SearchText_WithoutRepo_ResolvesCurrentFolderKey()
+    {
+        var (exit, stdout, stderr) = await RunCliAsync(
+            "search text \"Factorial\" --top 15",
+            workingDirectory: _tempRoot);
+        _output.WriteLine(stdout);
+        _output.WriteLine(stderr);
+
+        exit.Should().Be(0);
+        stdout.Should().Contain("Factorial");
+    }
+
+    [Fact]
+    public async Task SearchText_WithoutRepo_FallsBackToSingleIndexedRepo()
+    {
+        var (exit, stdout, stderr) = await RunCliAsync(
+            "search text \"Factorial\" --top 15",
+            workingDirectory: _solutionRoot);
+        _output.WriteLine(stdout);
+        _output.WriteLine(stderr);
+
+        exit.Should().Be(0);
+        stdout.Should().Contain("Factorial");
+    }
+
+    [Fact]
+    public async Task SearchText_WithoutRepo_FailsWhenMultipleReposAndNoFolderMatch()
+    {
+        var secondRoot = Path.Combine(Path.GetTempPath(), $"cxp_cli_e2e_second_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(secondRoot);
+        var secondRepoKey = new DirectoryInfo(secondRoot).Name;
+
+        try
+        {
+            File.WriteAllText(Path.Combine(secondRoot, "extra.cs"), "public class Extra { }");
+            var (indexExit, indexStdout, indexStderr) = await RunCliAsync($"index folder \"{secondRoot}\"");
+            _output.WriteLine(indexStdout);
+            _output.WriteLine(indexStderr);
+            indexExit.Should().Be(0);
+
+            var (exit, stdout, stderr) = await RunCliAsync(
+                "search text \"Factorial\" --top 15",
+                workingDirectory: _solutionRoot);
+            _output.WriteLine(stdout);
+            _output.WriteLine(stderr);
+
+            exit.Should().NotBe(0);
+            var combined = stdout + stderr;
+            combined.Should().Contain("No index selected. Use --repo <key> or run 'cxp list' to choose one.");
+        }
+        finally
+        {
+            await RunCliAsync($"invalidate {secondRepoKey}");
+            try { Directory.Delete(secondRoot, recursive: true); } catch { }
+        }
+    }
+
     // ══════════════════════════════════════════════════════════════════════════
     //  4) get context — RAG context bundle
     // ══════════════════════════════════════════════════════════════════════════
@@ -448,6 +510,12 @@ public sealed class CliEndToEndTests : IAsyncLifetime
         exit2.Should().Be(0);
         stdout2.Should().NotContain(RepoKey,
             "invalidated repo should no longer appear in list");
+
+        // Re-index to keep the shared fixture state valid for any later tests.
+        var (exit3, stdout3, stderr3) = await RunCliAsync($"index folder \"{_tempRoot}\"");
+        _output.WriteLine(stdout3);
+        _output.WriteLine(stderr3);
+        exit3.Should().Be(0);
     }
 
     // ══════════════════════════════════════════════════════════════════════════

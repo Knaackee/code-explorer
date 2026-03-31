@@ -152,14 +152,20 @@ public sealed class SearchSymbolsSettings : CommandSettings
 public sealed class SearchSymbolsCommand : AsyncCommand<SearchSymbolsSettings>
 {
     private readonly ISymbolRetriever _retriever;
-    public SearchSymbolsCommand(ISymbolRetriever retriever) => _retriever = retriever;
+    private readonly IIndexStore _store;
+    public SearchSymbolsCommand(ISymbolRetriever retriever, IIndexStore store)
+    {
+        _retriever = retriever;
+        _store = store;
+    }
 
     public override async Task<int> ExecuteAsync(CommandContext ctx, SearchSymbolsSettings settings)
     {
+        var repoKey = await RepoKeyResolver.ResolveAsync(settings.Repo, _store);
         SymbolKind? kind = settings.Kind != null && Enum.TryParse<SymbolKind>(settings.Kind, true, out var k) ? k : null;
 
         var results = await _retriever.SearchSymbolsAsync(
-            settings.Repo, settings.Query, kind, settings.Language, settings.Top);
+            repoKey, settings.Query, kind, settings.Language, settings.Top);
 
         if (settings.Json)
         {
@@ -218,11 +224,17 @@ public sealed class SearchTextSettings : CommandSettings
 public sealed class SearchTextCommand : AsyncCommand<SearchTextSettings>
 {
     private readonly ISymbolRetriever _retriever;
-    public SearchTextCommand(ISymbolRetriever retriever) => _retriever = retriever;
+    private readonly IIndexStore _store;
+    public SearchTextCommand(ISymbolRetriever retriever, IIndexStore store)
+    {
+        _retriever = retriever;
+        _store = store;
+    }
 
     public override async Task<int> ExecuteAsync(CommandContext ctx, SearchTextSettings settings)
     {
-        var results = await _retriever.SearchTextAsync(settings.Repo, settings.Query, settings.Top);
+        var repoKey = await RepoKeyResolver.ResolveAsync(settings.Repo, _store);
+        var results = await _retriever.SearchTextAsync(repoKey, settings.Query, settings.Top);
 
         if (settings.Json)
         {
@@ -249,11 +261,17 @@ public sealed class GetSymbolSettings : CommandSettings
 public sealed class GetSymbolCommand : AsyncCommand<GetSymbolSettings>
 {
     private readonly ISymbolRetriever _retriever;
-    public GetSymbolCommand(ISymbolRetriever retriever) => _retriever = retriever;
+    private readonly IIndexStore _store;
+    public GetSymbolCommand(ISymbolRetriever retriever, IIndexStore store)
+    {
+        _retriever = retriever;
+        _store = store;
+    }
 
     public override async Task<int> ExecuteAsync(CommandContext ctx, GetSymbolSettings settings)
     {
-        var source = await _retriever.GetSymbolSourceAsync(settings.Repo, settings.SymbolId);
+        var repoKey = await RepoKeyResolver.ResolveAsync(settings.Repo, _store);
+        var source = await _retriever.GetSymbolSourceAsync(repoKey, settings.SymbolId);
         if (source == null)
         {
             AnsiConsole.MarkupLine($"[red]Symbol not found:[/] {settings.SymbolId}");
@@ -282,11 +300,17 @@ public sealed class GetContextSettings : CommandSettings
 public sealed class GetContextCommand : AsyncCommand<GetContextSettings>
 {
     private readonly ISymbolRetriever _retriever;
-    public GetContextCommand(ISymbolRetriever retriever) => _retriever = retriever;
+    private readonly IIndexStore _store;
+    public GetContextCommand(ISymbolRetriever retriever, IIndexStore store)
+    {
+        _retriever = retriever;
+        _store = store;
+    }
 
     public override async Task<int> ExecuteAsync(CommandContext ctx, GetContextSettings settings)
     {
-        var bundle = await _retriever.GetRankedContextAsync(settings.Repo, settings.Query, settings.Budget);
+        var repoKey = await RepoKeyResolver.ResolveAsync(settings.Repo, _store);
+        var bundle = await _retriever.GetRankedContextAsync(repoKey, settings.Query, settings.Budget);
 
         if (settings.Json)
         {
@@ -541,5 +565,30 @@ public sealed class InvalidateCacheCommand : AsyncCommand<InvalidateCacheSetting
         await _store.DeleteAsync(settings.Repo);
         AnsiConsole.MarkupLine($"[green]✓[/] Cache invalidated for [bold]{Markup.Escape(settings.Repo)}[/]");
         return 0;
+    }
+}
+
+internal static class RepoKeyResolver
+{
+    public static async Task<string> ResolveAsync(string? explicitRepoKey, IIndexStore store, CancellationToken ct = default)
+    {
+        if (!string.IsNullOrWhiteSpace(explicitRepoKey))
+            return explicitRepoKey.Trim();
+
+        var keys = await store.ListRepoKeysAsync(ct);
+        if (keys.Count == 0)
+            throw new InvalidOperationException("No index selected. Use --repo <key> or run 'cxp index folder <path>' first.");
+
+        var currentFolderName = new DirectoryInfo(Environment.CurrentDirectory).Name;
+        var matchingKey = keys.FirstOrDefault(k =>
+            string.Equals(k, currentFolderName, StringComparison.OrdinalIgnoreCase));
+
+        if (!string.IsNullOrWhiteSpace(matchingKey))
+            return matchingKey;
+
+        if (keys.Count == 1)
+            return keys[0];
+
+        throw new InvalidOperationException("No index selected. Use --repo <key> or run 'cxp list' to choose one.");
     }
 }

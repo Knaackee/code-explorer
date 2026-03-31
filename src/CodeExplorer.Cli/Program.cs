@@ -26,7 +26,7 @@ var app = new CommandApp(registrar);
 app.Configure(config =>
 {
     config.SetApplicationName("cxp");
-    config.SetApplicationVersion("0.1.0");
+    config.SetApplicationVersion("0.1.1");
 
     config.AddBranch("index", index =>
     {

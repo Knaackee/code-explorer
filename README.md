@@ -59,8 +59,11 @@ tmpdir="$(mktemp -d)" && curl -L "https://github.com/Knaackee/code-explorer/rele
 
 ```bash
 cxp index folder .
-cxp search symbols --repo <folder-name> "Command"
+cxp search symbols "Command"
+cxp search text "TODO"
 ```
+
+If `--repo` is omitted, `cxp` resolves the index from your current folder name when possible.
 
 ### Library
 

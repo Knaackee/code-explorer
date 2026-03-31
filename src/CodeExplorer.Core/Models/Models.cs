@@ -150,12 +150,20 @@ public sealed class ChangedSymbols
 /// <summary>Global options injected via DI.</summary>
 public sealed class CodeExplorerOptions
 {
-    public string IndexPath { get; set; } =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".code-index");
+    public string IndexPath { get; set; } = ResolveDefaultIndexPath();
 
     public long MaxFileSizeBytes { get; set; } = 1_000_000;
     public int MaxFilesPerRepo { get; set; } = 10_000;
     public TimeSpan StalenessThreshold { get; set; } = TimeSpan.FromDays(7);
     public int BM25TopK { get; set; } = 20;
     public int FuzzyThreshold { get; set; } = 70;
+
+    private static string ResolveDefaultIndexPath()
+    {
+        var fromEnv = Environment.GetEnvironmentVariable("CODE_INDEX_PATH");
+        if (!string.IsNullOrWhiteSpace(fromEnv))
+            return Path.GetFullPath(Environment.ExpandEnvironmentVariables(fromEnv));
+
+        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".code-index");
+    }
 }

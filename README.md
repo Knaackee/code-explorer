@@ -33,6 +33,35 @@ No LLM required. This is a pure retrieval engine designed to be _consumed_ by an
 
 ## Quick Start
 
+### 60-Second Quickstart
+
+#### Install CLI (One-Line)
+
+Windows (PowerShell):
+
+```powershell
+Invoke-WebRequest -Uri https://github.com/<owner>/<repo>/releases/latest/download/cxp-win-x64.exe -OutFile cxp.exe; Move-Item cxp.exe "$env:LOCALAPPDATA\Microsoft\WindowsApps\cxp.exe" -Force
+```
+
+Linux:
+
+```bash
+curl -Lo cxp https://github.com/<owner>/<repo>/releases/latest/download/cxp-linux-x64 && chmod +x cxp && sudo mv cxp /usr/local/bin/
+```
+
+macOS:
+
+```bash
+curl -Lo cxp https://github.com/<owner>/<repo>/releases/latest/download/cxp-osx-arm64 && chmod +x cxp && sudo mv cxp /usr/local/bin/
+```
+
+#### First Commands
+
+```bash
+cxp index folder .
+cxp search symbols --repo <folder-name> "Command"
+```
+
 ### Library
 
 ```bash
@@ -185,6 +214,34 @@ dotnet publish src/CodeExplorer.Cli -r linux-x64   -c Release --self-contained -
 dotnet publish src/CodeExplorer.Cli -r win-x64     -c Release --self-contained -p:PublishSingleFile=true
 dotnet publish src/CodeExplorer.Cli -r osx-arm64   -c Release --self-contained -p:PublishSingleFile=true
 ```
+
+---
+
+## GitHub Actions & Release
+
+This repository ships two workflows:
+
+- `.github/workflows/ci.yml`: build, test, and publish CLI artifacts on push/PR.
+- `.github/workflows/release.yml`: tag-based release pipeline that:
+    - runs build + tests,
+    - packs and publishes `CodeExplorer.Core` to NuGet,
+    - builds `cxp` binaries for Linux, Windows, and macOS,
+    - creates a GitHub Release and uploads all CLI binaries.
+
+### NuGet Deploy Setup
+
+Add the following repository secret in GitHub:
+
+- `NUGET_API_KEY`: API key with push permission for `CodeExplorer.Core`.
+
+### Cut a Release
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+The release workflow will publish to NuGet and attach release binaries automatically.
 
 ---
 

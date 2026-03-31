@@ -34,7 +34,7 @@ jobs:
 
       - name: Test
         run: >
-          dotnet test tests/DotNetCodeMunch.Core.Tests
+          dotnet test tests/CodeExplorer.Core.Tests
           --no-build -c Release
           --logger "trx;LogFileName=results.trx"
           --results-directory TestResults
@@ -65,7 +65,7 @@ jobs:
 
       - name: Publish ${{ matrix.rid }}
         run: >
-          dotnet publish src/DotNetCodeMunch.Cli
+          dotnet publish src/CodeExplorer.Cli
           -r ${{ matrix.rid }}
           -c Release
           --self-contained
@@ -96,7 +96,7 @@ jobs:
 
       - name: Run benchmarks
         run: >
-          dotnet run --project tests/DotNetCodeMunch.Benchmarks
+          dotnet run --project tests/CodeExplorer.Benchmarks
           -c Release
           -- --exporters json markdown --artifacts BenchmarkArtifacts
 

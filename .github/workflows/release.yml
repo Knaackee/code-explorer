@@ -87,10 +87,9 @@ jobs:
         run: |
           mkdir -p artifacts/release
           if [[ "${{ matrix.rid }}" == win-* ]]; then
-            cp artifacts/cli/${{ matrix.rid }}/cxp.exe artifacts/release/cxp-${{ matrix.rid }}.exe
+            (cd artifacts/cli/${{ matrix.rid }} && zip -r ../../release/cxp-${{ matrix.rid }}.zip .)
           else
-            cp artifacts/cli/${{ matrix.rid }}/cxp artifacts/release/cxp-${{ matrix.rid }}
-            chmod +x artifacts/release/cxp-${{ matrix.rid }}
+            tar -C artifacts/cli/${{ matrix.rid }} -czf artifacts/release/cxp-${{ matrix.rid }}.tar.gz .
           fi
 
       - name: Upload release asset artifact

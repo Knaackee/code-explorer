@@ -1,7 +1,9 @@
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using CodeExplorer.Core.Models;
 using Microsoft.Extensions.Logging;
+using System.Runtime.InteropServices;
 using TreeSitter;
 
 namespace CodeExplorer.Core.Parsing;
@@ -12,6 +14,9 @@ namespace CodeExplorer.Core.Parsing;
 /// </summary>
 public sealed class SymbolExtractor
 {
+    private static readonly ConcurrentDictionary<string, bool> GrammarAvailableByLanguageId = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, byte> MissingGrammarLogged = new(StringComparer.OrdinalIgnoreCase);
+
     private readonly ILogger<SymbolExtractor> _logger;
 
     public SymbolExtractor(ILogger<SymbolExtractor> logger)
@@ -28,12 +33,33 @@ public sealed class SymbolExtractor
     {
         var symbols = new List<Symbol>();
 
+        if (!TreeSitterLanguageIds.TryGetValue(language, out var tsId))
+        {
+            ExtractHeuristic(source, filePath, language, spec, symbols);
+            AssignParents(symbols);
+            return symbols;
+        }
+
+        if (!IsGrammarAvailable(tsId))
+        {
+            if (MissingGrammarLogged.TryAdd(tsId, 0))
+            {
+                _logger.LogWarning(
+                    "tree-sitter native grammar library missing: {Library}. Falling back to heuristic extraction.",
+                    GetGrammarLibraryFileName(tsId));
+            }
+
+            ExtractHeuristic(source, filePath, language, spec, symbols);
+            AssignParents(symbols);
+            return symbols;
+        }
+
         try
         {
             // tree-sitter parsing via TreeSitter.DotNet
             // In real implementation: use TreeSitter.Language + Parser
             // Here we implement the full extraction logic with proper byte tracking
-            ExtractWithTreeSitter(source, filePath, language, spec, symbols);
+            ExtractWithTreeSitter(source, filePath, language, tsId, spec, symbols);
         }
         catch (Exception ex)
         {
@@ -47,6 +73,35 @@ public sealed class SymbolExtractor
         return symbols;
     }
 
+    private static bool IsGrammarAvailable(string treeSitterLanguageId)
+    {
+        return GrammarAvailableByLanguageId.GetOrAdd(treeSitterLanguageId, static id =>
+        {
+            var libraryName = GetGrammarLibraryFileName(id);
+            IntPtr handle;
+            try
+            {
+                handle = NativeLibrary.Load(libraryName, typeof(Language).Assembly, null);
+            }
+            catch
+            {
+                return false;
+            }
+
+            NativeLibrary.Free(handle);
+            return true;
+        });
+    }
+
+    private static string GetGrammarLibraryFileName(string treeSitterLanguageId)
+    {
+        var extension = OperatingSystem.IsWindows()
+            ? ".dll"
+            : OperatingSystem.IsMacOS() ? ".dylib" : ".so";
+
+        return $"tree-sitter-{treeSitterLanguageId}{extension}";
+    }
+
     private static readonly Dictionary<string, string> TreeSitterLanguageIds = new(StringComparer.OrdinalIgnoreCase)
     {
         ["python"] = "python",
@@ -56,7 +111,7 @@ public sealed class SymbolExtractor
         ["rust"] = "rust",
         ["java"] = "java",
         ["php"] = "php",
-        ["csharp"] = "c_sharp",
+        ["csharp"] = "c-sharp",
         ["c"] = "c",
         ["cpp"] = "cpp",
         ["ruby"] = "ruby",
@@ -77,12 +132,9 @@ public sealed class SymbolExtractor
     };
 
     private static void ExtractWithTreeSitter(
-        string source, string filePath, string language,
+        string source, string filePath, string language, string treeSitterLanguageId,
         LanguageSpec spec, List<Symbol> symbols)
     {
-        if (!TreeSitterLanguageIds.TryGetValue(language, out var tsId))
-            throw new NotSupportedException($"No tree-sitter grammar for '{language}'");
-
         // Build reverse map: node type string → SymbolKind
         var nodeTypeMap = new Dictionary<string, SymbolKind>(StringComparer.Ordinal);
         foreach (var (kind, nodeTypes) in spec.NodeTypes)
@@ -98,7 +150,7 @@ public sealed class SymbolExtractor
         if (spec.NodeTypes.TryGetValue(SymbolKind.Type, out var typeTypes))
             foreach (var tt in typeTypes) containerTypes.Add(tt);
 
-        using var lang = new Language(tsId);
+        using var lang = new Language(treeSitterLanguageId);
         using var parser = new Parser(lang);
         using var tree = parser.Parse(source);
 

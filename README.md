@@ -40,19 +40,19 @@ No LLM required. This is a pure retrieval engine designed to be _consumed_ by an
 Windows (PowerShell):
 
 ```powershell
-Invoke-WebRequest -Uri https://github.com/Knaackee/code-explorer/releases/latest/download/cxp-win-x64.exe -OutFile cxp.exe; Move-Item cxp.exe "$env:LOCALAPPDATA\Microsoft\WindowsApps\cxp.exe" -Force
+$installDir = "$env:LOCALAPPDATA\Microsoft\WindowsApps"; $zip = Join-Path $env:TEMP "cxp-win-x64.zip"; Invoke-WebRequest -Uri https://github.com/Knaackee/code-explorer/releases/latest/download/cxp-win-x64.zip -OutFile $zip; Expand-Archive -Path $zip -DestinationPath $installDir -Force
 ```
 
 Linux:
 
 ```bash
-curl -Lo cxp https://github.com/Knaackee/code-explorer/releases/latest/download/cxp-linux-x64 && chmod +x cxp && sudo mv cxp /usr/local/bin/
+tmpdir="$(mktemp -d)" && curl -L "https://github.com/Knaackee/code-explorer/releases/latest/download/cxp-linux-x64.tar.gz" -o "$tmpdir/cxp.tar.gz" && tar -xzf "$tmpdir/cxp.tar.gz" -C "$tmpdir" && sudo mkdir -p /opt/cxp && sudo cp "$tmpdir"/* /opt/cxp/ && sudo ln -sf /opt/cxp/cxp /usr/local/bin/cxp
 ```
 
 macOS:
 
 ```bash
-curl -Lo cxp https://github.com/Knaackee/code-explorer/releases/latest/download/cxp-osx-arm64 && chmod +x cxp && sudo mv cxp /usr/local/bin/
+tmpdir="$(mktemp -d)" && curl -L "https://github.com/Knaackee/code-explorer/releases/latest/download/cxp-osx-arm64.tar.gz" -o "$tmpdir/cxp.tar.gz" && tar -xzf "$tmpdir/cxp.tar.gz" -C "$tmpdir" && sudo mkdir -p /opt/cxp && sudo cp "$tmpdir"/* /opt/cxp/ && sudo ln -sf /opt/cxp/cxp /usr/local/bin/cxp
 ```
 
 #### First Commands
